@@ -156,8 +156,7 @@ class ApiController extends Controller
             } else {
                 $payLoad['message'] = (array) $payLoad['message'];
             }
-        }
-        $payLoad['responseDataSize'] = getSize($payLoad['data'], 'byte');
+        }        
         return response()->json($payLoad, $statusCode, $headers);
     }
 }
