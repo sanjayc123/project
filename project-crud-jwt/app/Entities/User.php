@@ -45,4 +45,12 @@ class User extends Authenticatable implements Transformable, JWTSubject
         return [];
     }
 
+    /**
+     * Get the comments for the blog post.
+     */
+    public function books()
+    {
+        return $this->hasMany('App\Book');
+    }
+
 }

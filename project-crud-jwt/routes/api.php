@@ -20,6 +20,6 @@ Route::namespace ('Api')->group(function () {
         Route::prefix('auth')->group(function () {
             Route::post('logout', 'AuthController@logout');
         });
-        Route::resource('category', 'CategoryController');
+        Route::resource('book', 'BooksController');
     });
 });
