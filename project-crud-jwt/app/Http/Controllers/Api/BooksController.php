@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Requests\BookUpdateRequest;
 use App\Repositories\Interfaces\BookRepository;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use Prettus\Validator\Contracts\ValidatorInterface;
 use Prettus\Validator\Exceptions\ValidatorException;
 
 /**
@@ -52,7 +52,7 @@ class BooksController extends ApiController
         $books        = $this->repository->index($search, $sortBy, $orderBy);
         $booksData    = $books->paginate($limit, $columns = ['*']);
         $responseData = [
-            'books' => (/*($booksData instanceof App\Entities\Book) && */!empty($booksData)) ? $booksData->toArray() : [],
+            'books' => ( /*($booksData instanceof App\Entities\Book) && */!empty($booksData)) ? $booksData->toArray() : [],
         ];
         return $this->response($responseData);
     }
@@ -80,12 +80,11 @@ class BooksController extends ApiController
             if ($validator->fails()) {
                 return $this->response($validator);
             }
-            $book     = $this->repository->create($request->all());
+            $book         = $this->repository->create($request->all());
             $responseData = [
                 'message' => 'Book created.',
                 'data'    => (($book instanceof App\Entities\Book) && !empty($book)) ? $book->toArray() : [],
             ];
-            return $this->response($responseData);
         } catch (\Exception $e) {
             $responseData = [
                 'error' => [
@@ -93,8 +92,8 @@ class BooksController extends ApiController
                     'status_code' => 500,
                 ],
             ];
-            return $this->response($responseData);
         }
+        return $this->response($responseData);
     }
 
     /**
@@ -106,10 +105,10 @@ class BooksController extends ApiController
      */
     public function show($id)
     {
-        $book = $this->repository->find($id);
+        $book         = $this->repository->find($id);
         $responseData = [
             'message' => 'View Book.',
-            'data'    => (/*($book instanceof App\Entities\Book) && */!empty($book)) ? $book->toArray() : [],
+            'data'    => ( /*($book instanceof App\Entities\Book) && */!empty($book)) ? $book->toArray() : [],
         ];
         return $this->response($responseData);
     }
@@ -123,9 +122,12 @@ class BooksController extends ApiController
      */
     public function edit($id)
     {
-        $book = $this->repository->find($id);
-
-        return view('books.edit', compact('book'));
+        $book         = $this->repository->find($id);
+        $responseData = [
+            'message' => 'Book edit.',
+            'data'    => ( /*($book instanceof App\Entities\Book) && */!empty($book)) ? $book->toArray() : [],
+        ];
+        return $this->response($responseData);
     }
 
     /**
@@ -138,37 +140,34 @@ class BooksController extends ApiController
      *
      * @throws \Prettus\Validator\Exceptions\ValidatorException
      */
-    public function update(BookUpdateRequest $request, $id)
+    public function update(Request $request, $id)
     {
         try {
-
-            $this->validator->with($request->all())->passesOrFail(ValidatorInterface::RULE_UPDATE);
-
-            $book = $this->repository->update($request->all(), $id);
-
-            $response = [
-                'message' => 'Book updated.',
-                'data'    => $book->toArray(),
+            $payload = $request->all();
+            dd($payload);
+            $rules = [
+                'user_id'     => 'required|exists:users,id',
+                'title'       => 'required',
+                'description' => 'required',
             ];
-
-            if ($request->wantsJson()) {
-
-                return response()->json($response);
+            $validator = Validator::make($payload, $rules);
+            if ($validator->fails()) {
+                return $this->response($validator);
             }
-
-            return redirect()->back()->with('message', $response['message']);
-        } catch (ValidatorException $e) {
-
-            if ($request->wantsJson()) {
-
-                return response()->json([
-                    'error'   => true,
-                    'message' => $e->getMessageBag(),
-                ]);
-            }
-
-            return redirect()->back()->withErrors($e->getMessageBag())->withInput();
+            $book         = $this->repository->update($payload, $id);
+            $responseData = [
+                'message' => 'Book updated.',
+                'data'    => ( /*($book instanceof App\Entities\Book) && */!empty($book)) ? $book->toArray() : [],
+            ];
+        } catch (\Exception $e) {
+            $responseData = [
+                'error' => [
+                    'message'     => 'Something went wrong.',
+                    'status_code' => 500,
+                ],
+            ];
         }
+        return $this->response($responseData);
     }
 
     /**
@@ -180,16 +179,22 @@ class BooksController extends ApiController
      */
     public function destroy($id)
     {
-        $deleted = $this->repository->delete($id);
-
-        if (request()->wantsJson()) {
-
-            return response()->json([
+        DB::beginTransaction();
+        try {
+            $deleted = $this->repository->delete($id);
+            DB::commit();
+            $responseData = [
                 'message' => 'Book deleted.',
-                'deleted' => $deleted,
-            ]);
+            ];
+        } catch (\Exception $e) {
+            DB::rollBack();
+            $responseData = [
+                'error' => [
+                    'message'     => 'Something went wrong.',
+                    'status_code' => 500,
+                ],
+            ];
         }
-
-        return redirect()->back()->with('message', 'Book deleted.');
+        return $this->response($responseData);
     }
 }
